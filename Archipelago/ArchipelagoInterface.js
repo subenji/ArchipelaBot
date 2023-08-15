@@ -29,6 +29,7 @@ class ArchipelagoInterface {
     const connectionInfo = {
       hostname: host,
       port,
+      password,
       uuid: uuid(),
       game: gameName,
       name: slotName,
