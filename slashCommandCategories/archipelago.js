@@ -1,5 +1,6 @@
 const ArchipelagoInterface = require('../Archipelago/ArchipelagoInterface');
 const { SlashCommandBuilder } = require('discord.js');
+const aptimeout = require('../Archipelago/apTimeout.js');
 
 module.exports = {
   category: 'Archipelago',
@@ -60,15 +61,9 @@ module.exports = {
               ephemeral: false,
             });
 
-            // Automatically disconnect and destroy this interface after six hours
-            return setTimeout(() => {
-              if (interaction.client.tempData.apInterfaces.has(interaction.channel.id)) {
-                let message = { type: 'chat', content: 'Disconnecting after 6 hours. Reconnect if required.', };
-                interaction.client.tempData.apInterfaces.get(interaction.channel.id).messageQueue.push(message);
-                interaction.client.tempData.apInterfaces.get(interaction.channel.id).disconnect();
-                interaction.client.tempData.apInterfaces.delete(interaction.channel.id);
-              }
-            }, 21600000);
+            // Automatically disconnect and destroy this interface after two hours
+            setTimeout(aptimeout, 7200000, interaction);
+            return;
           }
         }
 
