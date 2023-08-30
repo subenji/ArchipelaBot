@@ -1,4 +1,4 @@
-const { Client, ITEMS_HANDLING_FLAGS, SERVER_PACKET_TYPE, ConnectionStatus } = require('archipelago.js');
+const { Client, ITEMS_HANDLING_FLAGS, SERVER_PACKET_TYPE } = require('archipelago.js');
 const { User } = require('discord.js');
 const { v4: uuid } = require('uuid');
 
@@ -26,7 +26,7 @@ class ArchipelagoInterface {
     this.showProgression = true;
     this.showChat = true;
 
-    const connectionInfo = {
+    this.connectionInfo = {
       hostname: host,
       port,
       password,
@@ -36,19 +36,28 @@ class ArchipelagoInterface {
       items_handling: ITEMS_HANDLING_FLAGS.REMOTE_ALL,
     };
 
-    this.APClient.connect(connectionInfo).then(() => {
+    this.lastBounce;
+
+    this.connect();
+  }
+
+  async connect() {
+    await this.APClient.connect(this.connectionInfo).then(() => {
       // Start handling queued messages
       this.queueTimeout = setTimeout(this.queueHandler, 5000);
+      this.bounceTimeout = setTimeout(this.bounceHandler, 60000);
+      this.lastBounce = Date.now();
 
       // Set up packet listeners
       // this.APClient.addListener(SERVER_PACKET_TYPE.PRINT, this.printHandler);
       this.APClient.addListener(SERVER_PACKET_TYPE.PRINT_JSON, this.printJSONHandler);
+      this.APClient.addListener(SERVER_PACKET_TYPE.BOUNCED, this.bouncedHandler);
 
       // Inform the user ArchipelaBot has connected to the game
-      textChannel.send('Connection established.');
+      this.textChannel.send('Connection established.');
     }).catch(async (err) => {
       console.error('Error while trying to connect with connectionInfo:');
-      console.error(connectionInfo);
+      console.error(this.connectionInfo);
       console.error('With trace:');
       console.error(err);
       await this.textChannel.send('A problem occurred while connecting to the AP server:\n' +
@@ -186,6 +195,37 @@ class ArchipelagoInterface {
     this.messageQueue.push(message);
   };
 
+  bounceHandler = async () => {
+    if (Date.now() - this.lastBounce > 5*60*1000) {
+      await this.reconnect();
+      return;
+    }
+
+    let packet = {};
+    packet.cmd = 'Bounce';
+    packet.data = 'Ping';
+    packet.games = [this.gameName];
+    packet.slots = [this.APClient.data.slot];
+    this.APClient.send([packet]);
+
+    setTimeout(this.bounceHandler, 60000);
+  };
+
+  /**
+    * @param {Object} packet
+    * @param {String} rawMessage
+    * @param {String[]} games
+    * @param {Number[]} slots
+    * @param {String[]} tags
+    * @returns {Promise<void>}
+    */
+  bouncedHandler = async (_packet, rawMessage, games, slots) => {
+    if (games.includes(this.gameName) && slots.includes(this.APClient.data.slot) && rawMessage === 'Ping') {
+      this.lastBounce = Date.now();
+    }
+    return;
+  };
+
   /**
    * Associate a Discord user with a specified alias
    * @param {string} alias
@@ -210,7 +250,31 @@ class ArchipelagoInterface {
   /** Close the WebSocket connection on the ArchipelagoClient object */
   disconnect = () => {
     clearTimeout(this.queueTimeout);
+    clearTimeout(this.bounceTimeout);
     this.APClient.disconnect();
+  };
+
+  reconnect = async () => {
+    await this.textChannel.send('Lost connection to multiworld. Reconnecting...');
+    this.disconnect();
+
+    let attempts = 0;
+    let timeout = 1;
+
+    do {
+      try {
+        await new Promise(r => setTimeout(r, timeout*1000));
+        await this.connect();
+        break;
+      } catch (e) {
+        attempts++;
+        timeout*timeout;
+
+        if (attempts == 5) {
+          await this.textChannel.send('Unable to reconnect after 5 retries. Run /ap-disconnect and try again.');
+        }
+      }
+    } while (attempts < 5);
   };
 }
 
