@@ -2,6 +2,8 @@ const { Client, ITEMS_HANDLING_FLAGS, SERVER_PACKET_TYPE } = require('archipelag
 const { User } = require('discord.js');
 const { v4: uuid } = require('uuid');
 
+const DEBUG = false;
+
 class ArchipelagoInterface {
   /**
    * @param textChannel discord.js TextChannel
@@ -197,30 +199,31 @@ class ArchipelagoInterface {
 
   bounceHandler = async () => {
     if (Date.now() - this.lastBounce > 5*60*1000) {
+      if (DEBUG) console.log(`Ping failed: last ping received was ${(Date.now() - this.lastBounce) / 1000}s ago.`);
       await this.reconnect();
       return;
     }
 
-    let packet = {};
-    packet.cmd = 'Bounce';
-    packet.data = 'Ping';
-    packet.games = [this.gameName];
-    packet.slots = [this.APClient.data.slot];
-    this.APClient.send([packet]);
+    let packet = {
+      cmd: 'Bounce',
+      //games: [this.gameName];
+      slots: [this.APClient.data.slot],
+      data: 'Ping'
+    };
+    this.APClient.send(packet);
+    if (DEBUG) console.log(`sent packet: ${JSON.stringify(packet)}`);
 
     setTimeout(this.bounceHandler, 60000);
   };
 
   /**
     * @param {Object} packet
-    * @param {String} rawMessage
-    * @param {String[]} games
-    * @param {Number[]} slots
-    * @param {String[]} tags
     * @returns {Promise<void>}
     */
-  bouncedHandler = async (_packet, rawMessage, games, slots) => {
-    if (games.includes(this.gameName) && slots.includes(this.APClient.data.slot) && rawMessage === 'Ping') {
+  bouncedHandler = async (packet) => {
+    if (DEBUG) console.log(`recv packet: ${JSON.stringify(packet)}`);
+    if (packet.slots.includes(this.APClient.data.slot) && packet.data === 'Ping') {
+      if (DEBUG) console.log('got ping');
       this.lastBounce = Date.now();
     }
     return;
