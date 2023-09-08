@@ -147,8 +147,20 @@ class ArchipelagoInterface {
 
     this.APClient.timeoutid == Date.now();
 
-    if (!['ItemSend', 'ItemCheat', 'Hint'].includes(packet.type)) {
+    if (!['ItemSend', 'ItemCheat', 'Hint', 'Chat', 'ServerChat'].includes(packet.type)) {
       message.content = rawMessage;
+      this.messageQueue.push(message);
+      return;
+    }
+
+    if (packet.type == 'ServerChat') {
+      message.content = 'SERVER: '+rawMessage;
+      this.messageQueue.push(message);
+      return;
+    }
+
+    if (packet.type == 'Chat') {
+      message.content = this.APClient.players.alias(packet.slot)+': '+rawMessage;
       this.messageQueue.push(message);
       return;
     }
