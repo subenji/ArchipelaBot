@@ -43,7 +43,7 @@ class ArchipelagoInterface {
     this.connect();
   }
 
-  async connect() {
+  async connect(reconnect = false) {
     await this.APClient.connect(this.connectionInfo).then(() => {
       // Start handling queued messages
       this.queueTimeout = setTimeout(this.queueHandler, 5000);
@@ -56,7 +56,7 @@ class ArchipelagoInterface {
       this.APClient.addListener(SERVER_PACKET_TYPE.BOUNCED, this.bouncedHandler);
 
       // Inform the user ArchipelaBot has connected to the game
-      this.textChannel.send('Connection established.');
+      if (!reconnect) this.textChannel.send('Connection established.');
     }).catch(async (err) => {
       console.error('Error while trying to connect with connectionInfo:');
       console.error(this.connectionInfo);
@@ -198,13 +198,13 @@ class ArchipelagoInterface {
   };
 
   bounceHandler = async () => {
-    if (Date.now() - this.lastBounce > 5*60*1000) {
+    /*if (Date.now() - this.lastBounce > 5*60*1000) {
       if (DEBUG) console.log(`Ping failed: last ping received was ${(Date.now() - this.lastBounce) / 1000}s ago.`);
       await this.reconnect();
       return;
-    }
+    }*/
 
-    let packet = {
+    const packet = {
       cmd: 'Bounce',
       //games: [this.gameName];
       slots: [this.APClient.data.slot],
@@ -213,6 +213,7 @@ class ArchipelagoInterface {
     this.APClient.send(packet);
     if (DEBUG) console.log(`sent packet: ${JSON.stringify(packet)}`);
 
+    this.checkPingTimeout = setTimeout(this.checkPing, 5000);
     setTimeout(this.bounceHandler, 60000);
   };
 
@@ -225,7 +226,40 @@ class ArchipelagoInterface {
     if (packet.slots.includes(this.APClient.data.slot) && packet.data === 'Ping') {
       if (DEBUG) console.log('got ping');
       this.lastBounce = Date.now();
+      clearTimeout(this.checkPingTimeout);
     }
+    return;
+  };
+
+  checkPing = async () => {
+    const dt = Date.now() - this.lastBounce;
+    if (dt < 9000) {
+      this.checkPingTimeout = setTimeout(this.checkPing, 5000);
+      return;
+    }
+    
+    if (DEBUG) console.log(`no Ping response: last ping received was ${dt / 1000}s ago.`);
+    if (DEBUG) console.log(`archipelago.js status: ${this.APClient.status}`);
+    const packet = {
+      cmd: 'Bounce',
+      //games: [this.gameName];
+      slots: [this.APClient.data.slot],
+      data: 'Ping'
+    };
+    if (dt < 30000) {
+      if (DEBUG) console.log('retrying (10s)...');
+      this.APClient.send(packet);
+      this.checkPingTimeout = setTimeout(this.checkPing, 10000);
+      return;
+    }
+    if (dt < 60000) {
+      if (DEBUG) console.log('retrying (30s)...');
+      this.APClient.send(packet);
+      this.checkPingTimeout = setTimeout(this.checkPing, 30000);
+      return;
+    }
+    if (DEBUG) console.log('Connection failed. Reconnecting...');
+    await this.reconnect();
     return;
   };
 
@@ -254,11 +288,12 @@ class ArchipelagoInterface {
   disconnect = () => {
     clearTimeout(this.queueTimeout);
     clearTimeout(this.bounceTimeout);
+    clearTimeout(this.checkPingTimeout);
     this.APClient.disconnect();
   };
 
   reconnect = async () => {
-    await this.textChannel.send('Lost connection to multiworld. Reconnecting...');
+    //await this.textChannel.send('Lost connection to multiworld. Reconnecting...');
     this.disconnect();
 
     let attempts = 0;
@@ -267,7 +302,7 @@ class ArchipelagoInterface {
     do {
       try {
         await new Promise(r => setTimeout(r, timeout*1000));
-        await this.connect();
+        await this.connect(true);
         break;
       } catch (e) {
         attempts++;
