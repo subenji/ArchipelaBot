@@ -46,14 +46,16 @@ class ArchipelagoInterface {
   async connect(reconnect = false) {
     await this.APClient.connect(this.connectionInfo).then(() => {
       // Start handling queued messages
+      if (this.queueTimeout) { clearTimeout(this.queueTimeout); }
       this.queueTimeout = setTimeout(this.queueHandler, 5000);
+      if (this.bounceTimeout) { clearTimeout(this.bounceTimeout); }
       this.bounceTimeout = setTimeout(this.bounceHandler, 60000);
       this.lastBounce = Date.now();
 
       // Set up packet listeners
       // this.APClient.addListener(SERVER_PACKET_TYPE.PRINT, this.printHandler);
-      this.jsonListener = this.APClient.addListener(SERVER_PACKET_TYPE.PRINT_JSON, this.printJSONHandler);
-      this.bouncedListener = this.APClient.addListener(SERVER_PACKET_TYPE.BOUNCED, this.bouncedHandler);
+      this.APClient.addListener(SERVER_PACKET_TYPE.PRINT_JSON, this.printJSONHandler);
+      this.APClient.addListener(SERVER_PACKET_TYPE.BOUNCED, this.bouncedHandler);
 
       // Inform the user ArchipelaBot has connected to the game
       if (!reconnect) this.textChannel.send('Connection established.');
@@ -122,6 +124,7 @@ class ArchipelagoInterface {
     }
 
     // Set timeout to run again after five seconds
+    if (this.queueTimeout) { clearTimeout(this.queueTimeout); }
     this.queueTimeout = setTimeout(this.queueHandler, 5000);
   };
 
@@ -226,8 +229,10 @@ class ArchipelagoInterface {
     this.APClient.send(packet);
     if (DEBUG) console.log(`sent packet: ${JSON.stringify(packet)}`);
 
+    if (this.checkPingTimeout) { clearTimeout(this.checkPingTimeout); }
     this.checkPingTimeout = setTimeout(this.checkPing, 5000);
-    setTimeout(this.bounceHandler, 60000);
+    if (this.bounceHandlerTimeout) { clearTimeout(this.bounceHandlerTimeout); }
+    this.bounceHandlerTimeout = setTimeout(this.bounceHandler, 60000);
   };
 
   /**
@@ -240,6 +245,7 @@ class ArchipelagoInterface {
       if (DEBUG) console.log('got ping');
       this.lastBounce = Date.now();
       clearTimeout(this.checkPingTimeout);
+      this.checkPingTimeout = null;
     }
     return;
   };
@@ -247,6 +253,7 @@ class ArchipelagoInterface {
   checkPing = async () => {
     const dt = Date.now() - this.lastBounce;
     if (dt < 9000) {
+      if (this.checkPingTimeout) { clearTimeout(this.checkPingTimeout); }
       this.checkPingTimeout = setTimeout(this.checkPing, 5000);
       return;
     }
@@ -262,12 +269,14 @@ class ArchipelagoInterface {
     if (dt < 30000) {
       if (DEBUG) console.log('retrying (10s)...');
       this.APClient.send(packet);
+      if (this.checkPingTimeout) { clearTimeout(this.checkPingTimeout); }
       this.checkPingTimeout = setTimeout(this.checkPing, 10000);
       return;
     }
     if (dt < 60000) {
       if (DEBUG) console.log('retrying (30s)...');
       this.APClient.send(packet);
+      if (this.checkPingTimeout) { clearTimeout(this.checkPingTimeout); }
       this.checkPingTimeout = setTimeout(this.checkPing, 30000);
       return;
     }
@@ -302,8 +311,15 @@ class ArchipelagoInterface {
     clearTimeout(this.queueTimeout);
     clearTimeout(this.bounceTimeout);
     clearTimeout(this.checkPingTimeout);
-    clearTimeout(this.jsonListener);
-    clearTimeout(this.bouncedListener);
+    clearTimeout(this.bounceHandlerTimeout);
+    this.queueTimeout = null;
+    this.bounceTimeout = null;
+    this.checkPingTimeout = null;
+    this.bounceHandlerTimeout = null;
+
+    this.APClient.removeListener(SERVER_PACKET_TYPE.PRINT_JSON, this.printJSONHandler);
+    this.APClient.removeListener(SERVER_PACKET_TYPE.BOUNCED, this.bouncedHandler);
+
     this.APClient.disconnect();
   };
 
