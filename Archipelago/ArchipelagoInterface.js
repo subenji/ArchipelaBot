@@ -52,8 +52,8 @@ class ArchipelagoInterface {
 
       // Set up packet listeners
       // this.APClient.addListener(SERVER_PACKET_TYPE.PRINT, this.printHandler);
-      this.APClient.addListener(SERVER_PACKET_TYPE.PRINT_JSON, this.printJSONHandler);
-      this.APClient.addListener(SERVER_PACKET_TYPE.BOUNCED, this.bouncedHandler);
+      this.jsonListener = this.APClient.addListener(SERVER_PACKET_TYPE.PRINT_JSON, this.printJSONHandler);
+      this.bouncedListener = this.APClient.addListener(SERVER_PACKET_TYPE.BOUNCED, this.bouncedHandler);
 
       // Inform the user ArchipelaBot has connected to the game
       if (!reconnect) this.textChannel.send('Connection established.');
@@ -64,6 +64,7 @@ class ArchipelagoInterface {
       console.error(err);
       await this.textChannel.send('A problem occurred while connecting to the AP server:\n' +
         `\`\`\`${JSON.stringify(err)}\`\`\``);
+      throw new Error(err);
     });
   }
 
@@ -301,6 +302,8 @@ class ArchipelagoInterface {
     clearTimeout(this.queueTimeout);
     clearTimeout(this.bounceTimeout);
     clearTimeout(this.checkPingTimeout);
+    clearTimeout(this.jsonListener);
+    clearTimeout(this.bouncedListener);
     this.APClient.disconnect();
   };
 
