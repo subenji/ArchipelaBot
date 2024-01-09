@@ -1,10 +1,19 @@
-const { Client, ITEMS_HANDLING_FLAGS, SERVER_PACKET_TYPE } = require('archipelago.js');
+const { Client, ITEMS_HANDLING_FLAGS, SERVER_PACKET_TYPE, COMMON_TAGS } = require('archipelago.js');
 const { User } = require('discord.js');
 const { v4: uuid } = require('uuid');
 
 const DEBUG = false;
 
 class ArchipelagoInterface {
+/**
+   * @param textChannel discord.js TextChannel
+   * @param {string} host
+   * @param {Number} port
+   * @param {string} slotName
+   * @param {string|null} password optional
+   */
+
+  /*
   /**
    * @param textChannel discord.js TextChannel
    * @param {string} host
@@ -13,13 +22,16 @@ class ArchipelagoInterface {
    * @param {string} slotName
    * @param {string|null} password optional
    */
-  constructor(textChannel, host, port, gameName, slotName, password=null) {
+
+
+  //constructor(textChannel, host, port, gameName, slotName, password=null) {
+  constructor(textChannel, host, port, slotName, password=null) {
     this.textChannel = textChannel;
     this.messageQueue = [];
     this.players = new Map();
     this.APClient = new Client();
 
-    this.gameName = gameName;
+    /*this.gameName = gameName;*/
     this.slotName = slotName;
 
     // Controls which messages should be printed to the channel
@@ -33,9 +45,10 @@ class ArchipelagoInterface {
       port,
       password,
       uuid: uuid(),
-      game: gameName,
+      /*game: gameName,*/
       name: slotName,
       items_handling: ITEMS_HANDLING_FLAGS.REMOTE_ALL,
+      tags: [COMMON_TAGS.TEXT_ONLY],
     };
 
     this.lastBounce;
