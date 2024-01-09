@@ -32,8 +32,9 @@ class ArchipelagoInterface {
       port,
       password,
       uuid: uuid(),
+      game: '',
       name: slotName,
-      items_handling: ITEMS_HANDLING_FLAGS.REMOTE_ALL,
+      items_handling: ITEMS_HANDLING_FLAGS.LOCAL_ONLY,
       tags: [COMMON_TAGS.TEXT_ONLY],
     };
 
