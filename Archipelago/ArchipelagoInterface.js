@@ -13,25 +13,12 @@ class ArchipelagoInterface {
    * @param {string|null} password optional
    */
 
-  /*
-  /**
-   * @param textChannel discord.js TextChannel
-   * @param {string} host
-   * @param {Number} port
-   * @param {string} gameName
-   * @param {string} slotName
-   * @param {string|null} password optional
-   */
-
-
-  //constructor(textChannel, host, port, gameName, slotName, password=null) {
   constructor(textChannel, host, port, slotName, password=null) {
     this.textChannel = textChannel;
     this.messageQueue = [];
     this.players = new Map();
     this.APClient = new Client();
 
-    /*this.gameName = gameName;*/
     this.slotName = slotName;
 
     // Controls which messages should be printed to the channel
@@ -45,7 +32,6 @@ class ArchipelagoInterface {
       port,
       password,
       uuid: uuid(),
-      /*game: gameName,*/
       name: slotName,
       items_handling: ITEMS_HANDLING_FLAGS.REMOTE_ALL,
       tags: [COMMON_TAGS.TEXT_ONLY],

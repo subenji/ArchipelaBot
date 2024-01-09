@@ -18,10 +18,6 @@ module.exports = {
           .setName('port')
           .setDescription('Port number your game is hosted on')
           .setRequired(true))
-        /*.addStringOption((opt) => opt
-          .setName('game-name')
-          .setDescription('Name of the game to connect as a client of')
-          .setRequired(true))*/
         .addStringOption((opt) => opt
           .setName('slot-name')
           .setDescription('`name` field in your settings file')
@@ -33,7 +29,6 @@ module.exports = {
       async execute(interaction) {
         const serverAddress = interaction.options.getString('server-address');
         const port = interaction.options.getNumber('port');
-        /*const gameName = interaction.options.getString('game-name');*/
         const slotName = interaction.options.getString('slot-name');
         const password = interaction.options.getString('password', false) ?? null;
 
@@ -46,8 +41,6 @@ module.exports = {
         }
 
         // Establish a connection to the Archipelago game
-        /*const APInterface = new ArchipelagoInterface(interaction.channel, serverAddress, port,
-          gameName, slotName, password);*/
         const APInterface = new ArchipelagoInterface(interaction.channel, serverAddress, port,
           slotName, password);
 
@@ -59,7 +52,6 @@ module.exports = {
           if (APInterface.APClient.status === 'Connected') {
             interaction.client.tempData.apInterfaces.set(interaction.channel.id, APInterface);
             await interaction.reply({
-              /*content: `Connected to ${serverAddress} using game ${gameName} with slot ${slotName}.`,*/
               content: `Connected to ${serverAddress} with slot ${slotName}.`,
               ephemeral: false,
             });
