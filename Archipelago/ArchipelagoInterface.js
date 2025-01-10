@@ -189,7 +189,7 @@ class ArchipelagoInterface {
           if (message.type !== 'progression') { message.type = 'item'; }
 
           // Identify if this message contains a progression item
-          if (part?.flags === 0b001) { message.type = 'progression'; }
+          if (part?.flags & 0b001 > 0) { message.type = 'progression'; }
           break;
 
         case 'location_id':
